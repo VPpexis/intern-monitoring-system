@@ -149,16 +149,16 @@ const Dashboard = () => {
   const handleLogout = () => {
     // Handle logout logic here
     setRecords([]);
-    navigate('/');
+    navigate('intern-monitoring-system/');
   };
 
   const handleHomeClick = () => {
     setRecords([]);
-    navigate('/admin/dashboard');
+    navigate('intern-monitoring-system/admin/dashboard');
   }
 
   const handleCreateAccountClick = () => {
-    navigate('/admin/create-account');
+    navigate('intern-monitoring-system/admin/create-account');
   }
 
   const handleCellClick = (record, field) => {

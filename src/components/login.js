@@ -28,7 +28,7 @@ const Login = () => {
       const loginSuccess = await firebase.loginInternAccount(email, password);
       if (loginSuccess) {
         console.log('Login sucessful, UUID: ', loginSuccess);
-        navigate(`/dashboard/${loginSuccess}`);
+        navigate(`dashboard/${loginSuccess}`);
       } else {
         console.log('Invalid username or password');
       }

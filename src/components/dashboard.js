@@ -167,7 +167,7 @@ const Dashboard = () => {
   const handleLogout = () => {
     // Handle logout logic here
     setRecords([]);
-    navigate('/');
+    navigate('intern-monitoring-system/');
   };
 
   return (
