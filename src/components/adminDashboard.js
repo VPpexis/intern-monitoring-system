@@ -49,7 +49,7 @@ const AdminDashboard = () => {
 
     const handleRowClick = (e) => {
         console.log('Selected: ', e);
-        navigate(`intern-monitoring-system/admin/edit/${e.id}`);
+        navigate(`/admin/edit/${e.id}`);
     }
     const handleMenuOpen = (e) => {
         setAnchorEl(e.currentTarget);
@@ -59,15 +59,15 @@ const AdminDashboard = () => {
     }
 
     const handleHomeClick = () => {
-        navigate('intern-monitoring-system/admin/dashboard');
+        navigate('/admin/dashboard');
     }
 
     const handleCreateAccountClick = () => {
-        navigate('intern-monitoring-system/admin/create-account');
+        navigate('/admin/create-account');
     }
 
     const handleLogout = () => {
-        navigate('intern-monitoring-system/admin');
+        navigate('/admin');
     }
 
     React.useEffect(() => {

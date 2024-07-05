@@ -1,11 +1,7 @@
-// src/Dashboard.js
-/*
-TODO:
-1. Add total Hours
-*/
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Firebase from '../scripts/Firebase.js';
+import CalculateTotalHours from '../scripts/calculateTotalHours.js';
 import {
   AppBar,
   Toolbar,
@@ -27,6 +23,8 @@ import {
   Select,
   FormControl,
   InputLabel,
+  Stack,
+  Divider,
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 
@@ -37,32 +35,35 @@ const Dashboard = () => {
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [anchorEl, setAnchorEl] = useState(null);
   const [dates, setDates] = useState([]);
+  const [userInfo, setUserInfo] = useState({});
   const firebase = new Firebase();
   const navigate = useNavigate();
-  const effectRan  = useRef(false);
+  const effectRan = useRef(false);
 
   useEffect(() => {
     generateDates(currentMonth, currentYear);
-    
+
     const fetchDates = async () => {
       if (!effectRan.current) {
         const cloud_dates = await firebase.getDates(userID);
-        console.log(cloud_dates);
-        if(cloud_dates) {
-          for (const [key, value] of Object.entries(cloud_dates)) {
-            setRecords(prevRecords => [...prevRecords, { date: key, timeIn: value.timeIn, timeOut: value.timeOut, totalHours: value.totalHours }]);
-          }
+        const cloud_userInfo = await firebase.getUserInfo(userID);
 
-          for (let i = 0; i < cloud_dates.length; i++) {
-            console.log(cloud_dates);
-            
-          }
+        if (cloud_dates) {
+          const newRecords = Object.entries(cloud_dates).map(([key, value]) => ({
+            date: key,
+            timeIn: value.timeIn,
+            timeOut: value.timeOut,
+            totalHours: value.totalHours,
+          }));
+          setRecords(newRecords);
+          setUserInfo(cloud_userInfo);
         }
       }
-    }
+    };
+
     fetchDates();
-    return () => effectRan.current = true;
-  }, [currentMonth, currentYear, userID]);
+    return () => { effectRan.current = true; };
+  }, [currentMonth, currentYear, userID, firebase]);
 
   const generateDates = (month, year) => {
     const date = new Date(year, month, 1);
@@ -76,76 +77,36 @@ const Dashboard = () => {
     setDates(datesArray);
   };
 
-  const handleClockInOut = () => {
-    console.log(records);
+  const handleClockInOut = async () => {
     const now = new Date();
-    now.setDate(now.getDate() + 1);
-    const dateString = now.toISOString().split('T')[0]; // get YYYY-MM-DD format
-    console.log(userID);
+    const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+
     setRecords(prevRecords => {
       const recordIndex = prevRecords.findIndex(record => record.date === dateString);
-      if (recordIndex >= 0) {
-        // Record found, update the timeIn and timeOut fields
-        const updatedRecords = [...prevRecords];
-        if (updatedRecords[recordIndex].timeOut) {
-          // Record already has timeOut, update the timeIn field
-          return updatedRecords;
-        } else {
-          // Record found, update the timeOut field
-          updatedRecords[recordIndex].timeOut = now.toLocaleTimeString('PST');
-          updatedRecords[recordIndex].totalHours = calculateTotalHours(updatedRecords[recordIndex].timeIn, updatedRecords[recordIndex].timeOut);
-          if (updatedRecords[recordIndex].timeIn.split(' ')[1] === 'AM' && updatedRecords[recordIndex].timeOut.split(' ')[1] === 'PM'){
-            updatedRecords[recordIndex].totalHours = updatedRecords[recordIndex].totalHours - 1;
-          }
-          console.log(updatedRecords[recordIndex].totalHours, updatedRecords[recordIndex].timeIn, updatedRecords[recordIndex].timeOut);
-          firebase.pushTimeInOut(userID, { timeOut: now.toLocaleTimeString('PST') }, dateString);
-          firebase.pushTimeInOut(userID, { totalHours: updatedRecords[recordIndex].totalHours }, dateString);
+      let updatedRecords;
 
-          const totalHoursRendered = updatedRecords.reduce((total, record) => total + parseFloat(record.totalHours), 0).toFixed(2);
+      if (recordIndex >= 0) {
+        // Record found, update the timeOut field
+        updatedRecords = [...prevRecords];
+        const currentRecord = updatedRecords[recordIndex];
+
+        if (!currentRecord.timeOut) {
+          currentRecord.timeOut = now.toLocaleTimeString('PST');
+          currentRecord.totalHours = CalculateTotalHours(currentRecord.timeIn, currentRecord.timeOut);
+
+          firebase.pushTimeInOut(userID, { timeOut: currentRecord.timeOut, totalHours: currentRecord.totalHours }, dateString);
+          const totalHoursRendered = updatedRecords.reduce((total, record) => total + (parseInt(record.totalHours) || 0), 0);
           firebase.pushTotalHoursRendered(userID, totalHoursRendered);
-          console.log('totalHoursRendered', totalHoursRendered);
-          console.log("timeout",dateString);
-          return updatedRecords;
         }
       } else {
         // Record not found, create a new record
-        console.log("timein", dateString, now.toLocaleTimeString('PST'), userID);
-        console.log(firebase.pushTimeInOut(userID, { timeIn: now.toLocaleTimeString('PST') }, dateString));
-        return [...prevRecords, { date: dateString, timeIn: now.toLocaleTimeString('PST'), timeOut: null, totalHours: null }];
+        const newRecord = { date: dateString, timeIn: now.toLocaleTimeString('PST'), timeOut: null, totalHours: null };
+        updatedRecords = [...prevRecords, newRecord];
+        firebase.pushTimeInOut(userID, { timeIn: newRecord.timeIn }, dateString);
       }
- 
+
+      return updatedRecords;
     });
-
-  };
-
-  const calculateTotalHours = (timeIn, timeOut) => {
-    const timeInMeridian = timeIn.split(' ')[1];
-    const timeOutMeridian = timeOut.split(' ')[1];
-    timeIn = timeIn.split(' ')[0];
-    timeOut = timeOut.split(' ')[0];
-    const [hoursIn, minutesIn, secondsIn] = timeIn.split(':').map(Number);
-    const [hoursOut, minutesOut, secondsOut] = timeOut.split(':').map(Number);
-    
-    const timeInDate = new Date();
-    if (timeInMeridian === 'PM') {
-      timeInDate.setHours(hoursIn + 12);
-    }else{
-      timeInDate.setHours(hoursIn);
-    }
-    timeInDate.setMinutes(minutesIn);
-    timeInDate.setSeconds(secondsIn);
-
-    const timeOutDate = new Date();
-    if (timeOutMeridian === 'PM') {
-      timeOutDate.setHours(hoursOut + 12);
-    }else{
-      timeOutDate.setHours(hoursOut);
-    }
-    timeOutDate.setMinutes(minutesOut);
-    timeOutDate.setSeconds(secondsOut);
-    const diff = Math.abs((timeOutDate - timeInDate)) / (1000 * 60 * 60);
-    
-    return diff.toFixed(2);
   };
 
   const handleMonthChange = (event) => {
@@ -165,9 +126,8 @@ const Dashboard = () => {
   };
 
   const handleLogout = () => {
-    // Handle logout logic here
     setRecords([]);
-    navigate('intern-monitoring-system/');
+    navigate('/');
   };
 
   return (
@@ -213,10 +173,38 @@ const Dashboard = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Timing In/Out Dashboard
         </Typography>
+        <Divider sx={{ mt: 2, mb: 1 }} />
+        <Box sx={{ mb: 2 }} display="flex">
+          <Stack>
+            <Typography>Account Information: </Typography>
+            <Box ml={5}>
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>First Name: </Typography>
+                <Typography>{userInfo.firstName}</Typography>
+              </Stack>
+              <Stack direction={'row'}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Last Name: </Typography>
+                <Typography>{userInfo.lastName}</Typography>
+              </Stack>
+              <Stack direction={'row'}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours to be Rendered: </Typography>
+                <Typography mr={2}>{userInfo.hoursToBeRendered}</Typography>
+              </Stack>
+              <Stack direction={'row'}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}> Hours Rendered: </Typography>
+                <Typography>{userInfo.hoursRendered}</Typography>
+              </Stack>
+              <Stack direction={'row'}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours Left: </Typography>
+                <Typography>{userInfo.hoursToBeRendered - userInfo.hoursRendered}</Typography>
+              </Stack>
+            </Box>
+          </Stack>
+        </Box>
         <Box>
-            <Button variant="contained" onClick={handleClockInOut} sx={{ mb: 2 }}>
+          <Button variant="contained" onClick={handleClockInOut} sx={{ mb: 2 }}>
             Clock In/Out
-            </Button>
+          </Button>
         </Box>
         <FormControl sx={{ mb: 2, minWidth: 120, mr: 2 }} size="small">
           <InputLabel id="month-select-label">Month</InputLabel>
@@ -264,21 +252,14 @@ const Dashboard = () => {
             </TableHead>
             <TableBody>
               {dates.map((date_data, index) => {
-                var parseDate = ((data_date) => {
-                  const localDate = new Date(data_date.getTime() - (data_date.getTimezoneOffset() * 60 * 1000));
-                  return localDate.toISOString().split('T')[0];
-                })(date_data);
-                const dateString = parseDate;
-                var day = date_data;
-                day = day.toLocaleDateString('en-HK', { weekday: 'long' });
+                const dateString = date_data.toISOString().split('T')[0];
+                const dayString = date_data.toLocaleDateString('en-HK', { weekday: 'long' });
                 const record = records.find(record => record.date === dateString);
-                const totalHours = record && record.timeIn && record.timeOut && record.totalHours
-                  ? record.totalHours
-                  : '-';
+                const totalHours = record && record.timeIn && record.timeOut ? parseInt(record.totalHours) : '-';
                 return (
                   <TableRow key={index}>
                     <TableCell>{dateString}</TableCell>
-                    <TableCell>{day}</TableCell>
+                    <TableCell>{dayString}</TableCell>
                     <TableCell>{record?.timeIn || '-'}</TableCell>
                     <TableCell>12:00PM - 01:00PM</TableCell>
                     <TableCell>{record?.timeOut || '-'}</TableCell>

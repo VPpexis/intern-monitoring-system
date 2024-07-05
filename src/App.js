@@ -1,6 +1,6 @@
 // src/App.js
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, HashRouter } from 'react-router-dom';
 import React from 'react';
 import Login from './components/login.js';
 import CreateAccount from './components/createAccount.js';
@@ -12,18 +12,18 @@ import AdminInternEdit from './components/adminInternEdit.js';
 
 const App = () => {
   return (
-  <BrowserRouter>
+  <HashRouter>
     <Routes>
-      <Route path="intern-monitoring-system/" element={<Login />} />
-      <Route path="intern-monitoring-system/login" element={<Login />} />
-      <Route path="intern-monitoring-system/createAccount" element={<CreateAccount />} />
-      <Route path="intern-monitoring-system/dashboard/:userID" element={<Dashboard />} />
-      <Route path="intern-monitoring-system/admin" element={<AdminLogin />} />
-      <Route path="intern-monitoring-system/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="intern-monitoring-system/admin/edit/:userID" element={<AdminInternEdit />} />
-      <Route path="intern-monitoring-system/admin/create-account" element={<CreateAccount />} />
+      <Route path="/" element={<Login />} />
+      <Route path="login" element={<Login />} />
+      <Route path="/createAccount" element={<CreateAccount />} />
+      <Route path="/dashboard/:userID" element={<Dashboard />} />
+      <Route path="/admin" element={<AdminLogin />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/edit/:userID" element={<AdminInternEdit />} />
+      <Route path="/admin/create-account" element={<CreateAccount />} />
     </Routes>
-  </BrowserRouter>
+  </HashRouter>
   );
 }
 

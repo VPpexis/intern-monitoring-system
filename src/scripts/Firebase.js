@@ -8,6 +8,7 @@ import { getDatabase,
         query,
         get,
         set,
+        remove,
         equalTo } from 'firebase/database';
 
 
@@ -39,6 +40,11 @@ class Firebase {
             firstName: firstName,
             lastName: lastName
         });
+    }
+
+    async removeAccount(userID) {
+        const usersRef = ref(this.database, `users/interns/${userID}`);
+        remove(usersRef);
     }
 
     async pushTimeInOut(userID, timedata, date) {

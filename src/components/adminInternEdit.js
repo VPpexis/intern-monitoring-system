@@ -1,15 +1,7 @@
-// src/components/adminInternEdit.js
-
-/*
-TODO:
-    1. Add Total Hours To be Rendered Widget
-    2. Add Editable Button for the Total Hours To Be Rendered
-    3. Add Overall Renedered Hours
-    4. Add Overall Hours To Be Rendered Left
-*/
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Firebase from '../scripts/Firebase.js';
+import CalculateTotalHours from '../scripts/calculateTotalHours.js';
 import { TimeField } from '@mui/x-date-pickers/TimeField';
 import dayjs from 'dayjs';
 import { DemoContainer } from '@mui/x-date-pickers/internals/demo';
@@ -59,7 +51,8 @@ const Dashboard = () => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [selectedField, setSelectedField] = useState(null);
   const [timeValue, setTimeValue] = useState('');
-  const [editTextField ,setEditTextField] = useState(0);
+  const [editTextField, setEditTextField] = useState(0);
+  const [deleteDialagOpen, setDeleteDialogOpen] = useState(false);
   const firebase = new Firebase();
   const navigate = useNavigate();
   const effectRan = useRef(false);
@@ -71,16 +64,11 @@ const Dashboard = () => {
       if (!effectRan.current) {
         const cloud_dates = await firebase.getDates(userID);
         const cloud_userInfo = await firebase.getUserInfo(userID);
-        //console.log(cloud_dates);
         if (cloud_dates) {
-            for (const [key, value] of Object.entries(cloud_dates)) {
-                setRecords(prevRecords => [...prevRecords, { date: key, timeIn: value.timeIn, timeOut: value.timeOut, totalHours: value.totalHours }]);
-                setUserInfo(cloud_userInfo);
-            }
-      
-              for (let i = 0; i < cloud_dates.length; i++) {
-                console.log(cloud_dates);
-              }
+          for (const [key, value] of Object.entries(cloud_dates)) {
+            setRecords(prevRecords => [...prevRecords, { date: key, timeIn: value.timeIn, timeOut: value.timeOut, totalHours: value.totalHours }]);
+            setUserInfo(cloud_userInfo);
+          }
         }
       }
     }
@@ -98,36 +86,6 @@ const Dashboard = () => {
     }
 
     setDates(datesArray);
-  };
-
-  const calculateTotalHours = (timeIn, timeOut) => {
-    const timeInMeridian = timeIn.split(' ')[1];
-    const timeOutMeridian = timeOut.split(' ')[1];
-    timeIn = timeIn.split(' ')[0];
-    timeOut = timeOut.split(' ')[0];
-    const [hoursIn, minutesIn, secondsIn] = timeIn.split(':').map(Number);
-    const [hoursOut, minutesOut, secondsOut] = timeOut.split(':').map(Number);
-
-    const timeInDate = new Date();
-    if (timeInMeridian === 'PM') {
-      timeInDate.setHours(hoursIn + 12);
-    } else {
-      timeInDate.setHours(hoursIn);
-    }
-    timeInDate.setMinutes(minutesIn);
-    timeInDate.setSeconds(secondsIn);
-
-    const timeOutDate = new Date();
-    if (timeOutMeridian === 'PM') {
-      timeOutDate.setHours(hoursOut + 12);
-    } else {
-      timeOutDate.setHours(hoursOut);
-    }
-    timeOutDate.setMinutes(minutesOut);
-    timeOutDate.setSeconds(secondsOut);
-    const diff = Math.abs((timeOutDate - timeInDate)) / (1000 * 60 * 60);
-
-    return diff.toFixed(2);
   };
 
   const handleMonthChange = (event) => {
@@ -149,17 +107,21 @@ const Dashboard = () => {
   const handleLogout = () => {
     // Handle logout logic here
     setRecords([]);
-    navigate('intern-monitoring-system/');
+    navigate('/');
   };
 
   const handleHomeClick = () => {
     setRecords([]);
-    navigate('intern-monitoring-system/admin/dashboard');
+    navigate('/admin/dashboard');
   }
 
   const handleCreateAccountClick = () => {
-    navigate('intern-monitoring-system/admin/create-account');
+    navigate('/admin/create-account');
   }
+
+  const handleDeleteAccountClick = () => {
+    setDeleteDialogOpen(true);
+  };
 
   const handleCellClick = (record, field) => {
     if (record) {
@@ -171,10 +133,9 @@ const Dashboard = () => {
       } else {
         now.setHours(record[field].split(':')[0]);
       }
-      
+
       now.setMinutes(record[field].split(':')[1]);
       now.setMilliseconds(0);
-      console.log(now.toTimeString());
       setTimeValue(now);
       setDialogOpen(true);
     }
@@ -188,15 +149,17 @@ const Dashboard = () => {
     setEditDialogOpen(false);
   };
 
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+  }
+
   const handleTimeChange = (event) => {
-    console.log('handleTimeChange', event.hour());
     const now = new Date();
-    try{
-    now.setHours(event.hour());
-    console.log('setHours');
-    now.setMinutes(event.minute());
-    setTimeValue(now);
-    }catch(e){};
+    try {
+      now.setHours(event.hour());
+      now.setMinutes(event.minute());
+      setTimeValue(now);
+    } catch (e) { };
   };
 
   const handleEditClick = (e) => {
@@ -204,128 +167,129 @@ const Dashboard = () => {
   };
 
   const handleEditTextField = async (e) => {
-    console.log(e.target.value);
     await setEditTextField(e.target.value);
   }
 
   const handleDialogSave = () => {
-    console.log(selectedField);
     const updatedRecords = records.map(record => {
       if (record.date === selectedRecord.date) {
         const updatedRecord = { ...record, [selectedField]: timeValue.toLocaleTimeString('PST') };
         if (selectedField === 'timeIn' && updatedRecord.timeOut) {
-            updatedRecord.totalHours = calculateTotalHours(updatedRecord.timeIn, updatedRecord.timeOut);
-            const totalHoursRendered = records.reduce((total, record) => total + parseFloat(record.totalHours), 0).toFixed(2);
-            firebase.pushTotalHoursRendered(userID, totalHoursRendered);
-            console.log('totalHoursRendered', totalHoursRendered);
+          updatedRecord.totalHours = CalculateTotalHours(updatedRecord.timeIn, updatedRecord.timeOut);
         } else if (selectedField === 'timeOut' && updatedRecord.timeIn) {
-            updatedRecord.totalHours = calculateTotalHours(updatedRecord.timeIn, updatedRecord.timeOut);
-            const totalHoursRendered = records.reduce((total, record) => total + parseFloat(record.totalHours), 0).toFixed(2);
-            firebase.pushTotalHoursRendered(userID, totalHoursRendered);
+          updatedRecord.totalHours = CalculateTotalHours(updatedRecord.timeIn, updatedRecord.timeOut);
         }
-        console.log(updatedRecord.totalHours);
         firebase.pushTimeInOut(userID, { [selectedField]: timeValue.toLocaleTimeString('PST') }, record.date);
         firebase.pushTimeInOut(userID, { totalHours: updatedRecord.totalHours }, record.date);
-        
         return updatedRecord;
       }
       return record;
     });
 
+    const totalHoursRendered = updatedRecords.reduce((total, record) => total + (record.totalHours ? parseInt(record.totalHours) : 0), 0);
+    setUserInfo(prevUserInfo => ({ ...prevUserInfo, hoursRendered: totalHoursRendered }));
     setRecords(updatedRecords);
+    firebase.pushTotalHoursRendered(userID, totalHoursRendered);
     handleDialogClose();
   };
 
+  const handleDeleteDialogClick = () => {
+    firebase.removeAccount(userID);
+    handleDeleteDialogClose();
+    navigate('/admin/dashboard');
+  }
+
   const handleEditDialogSave = async () => {
-    console.log('Saved');
-    console.log(editTextField)
-    await setUserInfo({ ...userInfo, hoursToBeRendered: editTextField });
+    await setUserInfo(prevUserInfo => ({ ...prevUserInfo, hoursToBeRendered: editTextField }));
     firebase.pushHoursToBeRendered(userID, editTextField);
     handleEditDialogClose();
-    };
+  };
 
   return (
     <Container>
       <AppBar sx={{ }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'right' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'right' }}>
             <Typography variant="h6" sx={{  }} mr={2}>
-            Intern Monitoring System
+              Intern Monitoring System
             </Typography>
             <Button color="inherit" onClick={handleHomeClick}>Home</Button>
             <Button color="inherit" onClick={handleCreateAccountClick}>Create Account</Button>
-            </Box>
-            <IconButton
+          </Box>
+          <IconButton
             edge="end"
             color="inherit"
             aria-label="account of current user"
             aria-controls="menu-appbar"
             aria-haspopup="true"
             onClick={handleMenuOpen}
-            >
+          >
             <Avatar>
-                <AccountCircle />
+              <AccountCircle />
             </Avatar>
-            </IconButton>
-            <Menu
+          </IconButton>
+          <Menu
             id="menu-appbar"
             anchorEl={anchorEl}
             anchorOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
+              vertical: 'top',
+              horizontal: 'right',
             }}
             keepMounted
             transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
+              vertical: 'top',
+              horizontal: 'right',
             }}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
-            >
+          >
             <MenuItem onClick={handleLogout}>Logout</MenuItem>
-            </Menu>
+          </Menu>
         </Toolbar>
-        </AppBar>
+      </AppBar>
       <Box sx={{ mt: 10 }} />
       <Box sx={{ my: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Time In/Out Dashboard
         </Typography>
-        <Divider  sx={{ mt: 2, mb : 1 }} />
+        <Divider sx={{ mt: 2, mb: 1 }} />
         <Box sx={{ mb: 2 }} display="flex">
-            <Stack>
+          <Stack>
             <Typography>Account Information: </Typography>
             <Box ml={5}>
-                <Stack direction={"row"}>
-                    <Typography mr={1} component={'div'} fontWeight={'bold'}>First Name: </Typography>
-                    <Typography>{userInfo.firstName}</Typography>
-                </Stack>
-                <Stack direction={"row"}>
-                    <Typography mr={1} component={'div'} fontWeight={'bold'}>Last Name: </Typography>
-                    <Typography>{userInfo.lastName}</Typography>
-                </Stack>
-                <Stack direction = {"row"}>
-                    <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours to Be Rendered: </Typography>
-                    <Typography mr={2}>{userInfo.hoursToBeRendered}</Typography>
-                    <span
-                    style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
-                    onClick={handleEditClick}
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>First Name: </Typography>
+                <Typography>{userInfo.firstName}</Typography>
+              </Stack>
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Last Name: </Typography>
+                <Typography>{userInfo.lastName}</Typography>
+              </Stack>
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours to Be Rendered: </Typography>
+                <Typography mr={2}>{userInfo.hoursToBeRendered}</Typography>
+                <span
+                  style={{ color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
+                  onClick={handleEditClick}
                 >
-                    Edit
+                  Edit
                 </span>
-                </Stack>
-                <Stack direction = {"row"}>
-                    <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours Rendered: </Typography>
-                    <Typography>{userInfo.hoursRendered}</Typography>
-                </Stack>
-                <Stack direction = {"row"}>
-                    <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours Left: </Typography>
-                    <Typography>{userInfo.hoursToBeRendered - userInfo.hoursRendered}</Typography>
-                </Stack>
+              </Stack>
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours Rendered: </Typography>
+                <Typography>{userInfo.hoursRendered}</Typography>
+              </Stack>
+              <Stack direction={"row"}>
+                <Typography mr={1} component={'div'} fontWeight={'bold'}>Hours Left: </Typography>
+                <Typography>{userInfo.hoursToBeRendered - userInfo.hoursRendered}</Typography>
+              </Stack>
             </Box>
-            </Stack>
+          </Stack>
         </Box>
-        <Divider  sx={{ mb : 2 }} />
+        <Box mb={2}>
+          <Button variant="contained" onClick={handleDeleteAccountClick}>Delete Account</Button>
+        </Box>
+        <Divider sx={{ mb: 2 }} />
         <FormControl sx={{ mb: 2, minWidth: 120, mr: 2 }} size="small">
           <InputLabel id="month-select-label">Month</InputLabel>
           <Select
@@ -373,10 +337,10 @@ const Dashboard = () => {
             <TableBody>
               {dates.map((date_data, index) => {
                 var parseDate = ((data_date) => {
-                    const localDate = new Date(data_date.getTime() - (data_date.getTimezoneOffset() * 60 * 1000));
-                    return localDate.toISOString().split('T')[0];
-                  })(date_data);
-                  const dateString = parseDate;
+                  const localDate = new Date(data_date.getTime() - (data_date.getTimezoneOffset() * 60 * 1000));
+                  return localDate.toISOString().split('T')[0];
+                })(date_data);
+                const dateString = parseDate;
                 const record = records.find(record => record.date === dateString);
                 const totalHours = record && record.timeIn && record.timeOut && record.totalHours
                   ? record.totalHours
@@ -400,10 +364,25 @@ const Dashboard = () => {
           </Table>
         </TableContainer>
       </Box>
+      <Dialog open={deleteDialagOpen} onClose={handleDeleteDialogClose}>
+        <DialogTitle>Delete Account Confirmation</DialogTitle>
+        <DialogContent>
+        <Typography>Confirm Deletion of Account? </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Stack direction={"row"}>
+            
+            <Box>
+              <Button color="primary" onClick={handleDeleteDialogClick}>Ok</Button>
+              <Button onClick={handleDeleteDialogClose}>Cancel</Button>
+            </Box>
+          </Stack>
+        </DialogActions>
+      </Dialog>
       <Dialog open={editDialogOpen} onClose={handleEditDialogClose}>
         <DialogTitle>Edit Hours</DialogTitle>
         <DialogContent>
-            <TextField type="number" InputProps={{ inputProps: { min: 0 }}} onChange={handleEditTextField}></TextField>
+          <TextField type="number" InputProps={{ inputProps: { min: 0 } }} onChange={handleEditTextField}></TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleEditDialogClose} color="primary">
@@ -417,17 +396,17 @@ const Dashboard = () => {
       <Dialog open={dialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Edit Time</DialogTitle>
         <DialogContent>
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DemoContainer components={['TimeField']}>
-                    <TimeField
-                        autoFocus
-                        margin="dense"
-                        label="Time"
-                        fullWidth
-                        value={dayjs(timeValue)}
-                        onChange={(newValue) => handleTimeChange(newValue)}
-                    />
-                </DemoContainer>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DemoContainer components={['TimeField']}>
+              <TimeField
+                autoFocus
+                margin="dense"
+                label="Time"
+                fullWidth
+                value={dayjs(timeValue)}
+                onChange={(newValue) => handleTimeChange(newValue)}
+              />
+            </DemoContainer>
           </LocalizationProvider>
         </DialogContent>
         <DialogActions>
