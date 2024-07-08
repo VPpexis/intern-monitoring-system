@@ -5,6 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Box, TextField, Button, Typography, Avatar } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 
+/*
+Intern  Login Page:
+  In-charge of Intern Login Page.
+*/
 const AdminLogin = () => {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');

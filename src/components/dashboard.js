@@ -28,6 +28,10 @@ import {
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 
+/* 
+Intern DashBoard:
+  Intern dashboard. Shows the dashboard for the intern. Intern can clock-in and clock-out.
+*/
 const Dashboard = () => {
   const { userID } = useParams();
   const [records, setRecords] = useState([]);
@@ -252,7 +256,11 @@ const Dashboard = () => {
             </TableHead>
             <TableBody>
               {dates.map((date_data, index) => {
-                const dateString = date_data.toISOString().split('T')[0];
+                var parseDate = ((data_date) => {
+                  const localDate = new Date(data_date.getTime() - (data_date.getTimezoneOffset() * 60 * 1000));
+                  return localDate.toISOString().split('T')[0];
+                })(date_data);
+                const dateString = parseDate;
                 const dayString = date_data.toLocaleDateString('en-HK', { weekday: 'long' });
                 const record = records.find(record => record.date === dateString);
                 const totalHours = record && record.timeIn && record.timeOut ? parseInt(record.totalHours) : '-';

@@ -38,6 +38,11 @@ import {
 } from '@mui/material';
 import AccountCircle from '@mui/icons-material/AccountCircle';
 
+
+/* 
+Admin DashBoard:
+  In-charge of Account Intern Dashboard Shows the account's data. Admin can change the data of the selected account.
+*/
 const Dashboard = () => {
   const { userID } = useParams();
   const [records, setRecords] = useState([]);

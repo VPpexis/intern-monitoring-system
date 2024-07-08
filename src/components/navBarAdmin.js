@@ -8,6 +8,10 @@ const pages = ['Products', 'Pricing', 'Blog'];
 const settings = ['Profile', 'Logout'];
 
 
+/*
+Navbar Component
+Code for Navbar.
+*/
 export default function NavBarAdmin() {
     const [anchorElUser, setAnchorElUser] = React.useState(null);
 

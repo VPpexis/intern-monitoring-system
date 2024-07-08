@@ -1,41 +1,54 @@
 import * as React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import { CssBaseline } from '@mui/material';
 import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
-import Link from '@mui/material/Link';
-import Grid from '@mui/material/Grid';
-import Box from '@mui/material/Box';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import Container from '@mui/material/Container';
+import Box from '@mui/material/Box';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import Grid from '@mui/material/Grid';
+import Link from '@mui/material/Link';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Firebase from '../scripts/Firebase.js';
 
 const defaultTheme = createTheme();
 
-export default function CreateAcount() {
-    const [showText, setShowText] = useState(false);
-    const [showText2, setShowText2] = useState(true);
-    const [data, setData] = useState({});
+
+/* 
+Admin Create Account
+  In-charge of creating new intern accounts in the database.
+*/
+export default function CreateAccount() {
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showError, setShowError] = useState(false);
     const firebase_instance = new Firebase();
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const data = new FormData(e.currentTarget);
-        console.log({ 
-            email: data.get('email'),
-            password: data.get('password'),
-            firstName: data.get('firstName'),
-            lastName: data.get('lastName'),
-        });
-        console.log(data.values());
-        firebase_instance.pushAccount(data.get('email'), data.get('password'), data.get('firstName'), data.get('lastName'));
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get('email');
+        const password = formData.get('password');
+        const firstName = formData.get('firstName');
+        const lastName = formData.get('lastName');
+
+        if (email && password && firstName && lastName) {
+            try {
+                await firebase_instance.pushAccount(email, password, firstName, lastName);
+                setShowSuccess(true);
+                setShowError(false);
+            } catch (error) {
+                console.error("Error creating account: ", error);
+                setShowError(true);
+                setShowSuccess(false);
+            }
+        } else {
+            setShowError(true);
+            setShowSuccess(false);
+        }
     };
 
     const handleCancel = () => {
@@ -58,8 +71,7 @@ export default function CreateAcount() {
                         <LockOutlinedIcon />
                     </Avatar>
                     <Typography component="h1" variant="h5">
-
-                        Sign In
+                        Create Account
                     </Typography>
                     <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
                         <TextField
@@ -70,8 +82,7 @@ export default function CreateAcount() {
                             label="Email Address"
                             name="email"
                             autoComplete="email"
-                            autoFocus
-                        ></TextField>
+                        />
                         <TextField
                             margin="normal"
                             required
@@ -79,9 +90,8 @@ export default function CreateAcount() {
                             id="firstName"
                             label="First Name"
                             name="firstName"
-                            autoComplete="firstName"
-                            autoFocus
-                        ></TextField>
+                            autoComplete="given-name"
+                        />
                         <TextField
                             margin="normal"
                             required
@@ -89,9 +99,8 @@ export default function CreateAcount() {
                             id="lastName"
                             label="Last Name"
                             name="lastName"
-                            autoComplete="lastName"
-                            autoFocus
-                        ></TextField>
+                            autoComplete="family-name"
+                        />
                         <TextField
                             margin="normal"
                             required
@@ -99,33 +108,38 @@ export default function CreateAcount() {
                             id="password"
                             label="Password"
                             name="password"
+                            type="password"
                             autoComplete="current-password"
-                        ></TextField>
-                        <Box sx={{ mt: 1 , alignItems: 'center', display: 'flex'}}>
-                            {showText && <Typography sx={{ color: 'green', Itemaligns: 'center'}}> Account Created</Typography>}
-                            {showText2 && <Typography sx={{ color: 'red', Itemaligns: 'center'}}> All Fields must not be empty.</Typography>}
+                        />
+                        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
+                            {showSuccess && <Typography sx={{ color: 'green' }}>Account Created</Typography>}
+                            {showError && <Typography sx={{ color: 'red' }}>All fields must not be empty.</Typography>}
                         </Box>
                         <Button
                             type="submit"
                             fullWidth
                             variant="contained"
                             sx={{ mt: 3, mb: 2}}
-                            onClick={handleSubmit}
                         >
-                                Sign In
+                            Create Account
                         </Button>
                         <Button
-                            type="cancel"
                             fullWidth
                             variant="contained"
                             sx={{ mt: 0, mb: 2}}
                             onClick={handleCancel}
                         >
-                                cancel
+                            Cancel
                         </Button>
-                        <Grid Container>
+                        <Grid container>
                             <Grid item xs>
                                 <Link href="#" variant="body2">
+                                    Forgot password?
+                                </Link>
+                            </Grid>
+                            <Grid item>
+                                <Link href="#" variant="body2">
+                                    {"Already have an account? Sign In"}
                                 </Link>
                             </Grid>
                         </Grid>
@@ -133,5 +147,5 @@ export default function CreateAcount() {
                 </Box>
             </Container>
         </ThemeProvider>
-    )
+    );
 }

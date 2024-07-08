@@ -35,6 +35,10 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
     },
 }))
 
+/* 
+Admin DashBoard:
+  In-charge of Admin Dashboard. It shows the list of all accounts.
+*/
 const AdminDashboard = () => {
     const [anchorEl, setAnchorEl] = React.useState(null);
     const [data, setData] = React.useState([]);
